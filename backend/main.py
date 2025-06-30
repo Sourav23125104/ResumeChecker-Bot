@@ -9,7 +9,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restrict in production
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,7 +19,7 @@ class ResumeRequest(BaseModel):
     resume: str
     job_description: str
 
-# 🟢 1. Keep existing text-based endpoint
+# text-based endpoint
 @app.post("/analyze")
 async def analyze(req: ResumeRequest):
     score = get_fit_score(req.resume, req.job_description)
@@ -32,7 +32,7 @@ async def analyze(req: ResumeRequest):
         "suggestions": suggestions
     }
 
-# 🆕 2. New file-based resume upload endpoint
+# resume upload endpoint
 def extract_text(file: UploadFile) -> str:
     content = ""
     if file.filename.endswith(".pdf"):

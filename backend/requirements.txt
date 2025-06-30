@@ -4,3 +4,4 @@ scikit-learn
 nltk
 ollama
 python-multipart
+docx
