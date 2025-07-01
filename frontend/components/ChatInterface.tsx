@@ -131,7 +131,7 @@ export default function ChatBot() {
                 height: '90vh',
                 background: '#f9f9f9',
                 borderRadius: 2,
-                boxShadow: 3,
+                boxShadow: 2,
             }}
         >
             
