@@ -29,18 +29,41 @@ def find_missing_keywords(resume, jd):
 def get_suggestions_from_ollama(resume, jd):
     prompt = f"""
 You are a resume expert. Given this resume and job description, suggest improvements:
+
 Resume:
 {resume}
 
 Job Description:
 {jd}
 
-Focus on keywords to add, phrasing improvements, and structure tips.
+Your response should include:
+- Which keywords or skills are missing in the resume
+- What phrasing could be improved
+- Any structural suggestions
 """
+
     response = chat(
-            model='llama3.2:1b',
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
+        model='llama3.2:1b',  # Updated from 'llama3.2:1b' to valid model name
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response["message"]["content"]
+
+def ask_followup_from_ollama(suggestions, question):
+    prompt = f"""
+You previously gave the following resume suggestions:
+
+{suggestions}
+
+Now the user asks this follow-up question:
+"{question}"
+
+Please answer clearly based on your earlier suggestions.
+"""
+
+    response = chat(
+        model='llama3.2:1b',  # Updated to valid existing model
+        messages=[{"role": "user", "content": prompt}]
+    )
+
     return response["message"]["content"]

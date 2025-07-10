@@ -26,11 +26,15 @@ export default function ChatBot() {
     const [messages, setMessages] = useState<Message[]>([
         { sender: 'bot', content: "👋 Hi! Let's tailor your resume.\n📄 Please upload your resume." }
     ]);
-    const [step, setStep] = useState<'resume' | 'jd' | 'done'>('resume');
+    const [step, setStep] = useState<'resume' | 'jd' | 'followup'>('resume');
     const [input, setInput] = useState('');
     const [resume, setResume] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+
+    const [suggestionsText, setSuggestionsText] = useState('');
+    const [followupCount, setFollowupCount] = useState(0);
+
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -61,6 +65,8 @@ export default function ChatBot() {
                 ...updatedMessages,
                 { sender: 'bot', content: '✅ Got it. Now paste the job description.' }
             ]);
+            setInput('');
+            return;
         }
 
         if (step === 'jd') {
@@ -84,12 +90,15 @@ export default function ChatBot() {
 
                 const { fit_score, missing_keywords, suggestions } = res.data;
 
+                setSuggestionsText(suggestions);  // Store for follow-up questions
                 setMessages(prev => [
                     ...prev,
                     { sender: 'bot', content: `⭐ Fit Score: ${fit_score}%` },
                     { sender: 'bot', content: `🔍 Missing Keywords: ${missing_keywords.join(', ') || 'None 🎉'}` },
-                    { sender: 'bot', content: `🛠️ Suggestions:\n${suggestions}` }
+                    { sender: 'bot', content: `🛠️ Suggestions:\n${suggestions}` },
+                    { sender: 'bot', content: '💬 You can now ask up to 3 follow-up questions about these suggestions.' }
                 ]);
+                setStep('followup');
             } catch (err) {
                 console.error(err);
                 setMessages(prev => [
@@ -99,8 +108,52 @@ export default function ChatBot() {
             } finally {
                 setLoading(false);
             }
+            return;
+        }
+
+        if (step === 'followup') {
+            if (followupCount >= 3) {
+                setMessages(prev => [
+                    ...prev,
+                    createMessage('user', input),
+                    createMessage('bot', '⚠️ You have reached the 3-question limit.')
+                ]);
+                setInput('');
+                return;
+            }
+
+            setMessages([
+                ...updatedMessages,
+                { sender: 'bot', content: '✏️ Let me think...' }
+            ]);
+            setLoading(true);
+
+            try {
+                const res = await axios.post('http://localhost:8000/ask-followup', {
+                    suggestions: suggestionsText,
+                    question: input
+                });
+
+                const { answer } = res.data;
+
+                setMessages(prev => [
+                    ...prev.slice(0, -1), // Remove thinking message
+                    { sender: 'bot', content: answer || '🤖 No response available.' }
+                ]);
+                setFollowupCount(prev => prev + 1);
+            } catch (err) {
+                console.error(err);
+                setMessages(prev => [
+                    ...prev,
+                    { sender: 'bot', content: '❌ Could not fetch follow-up answer.' }
+                ]);
+            } finally {
+                setLoading(false);
+                setInput('');
+            }
         }
     };
+
 
     const handleKeyPress = (e: any) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -134,14 +187,14 @@ export default function ChatBot() {
                 boxShadow: 2,
             }}
         >
-            
-         <span className='flex flex-row gap-2'>
-         <MessagesSquare color='#2196f3'/>
-         <Typography color='primary' variant="h5" fontWeight={600}>
-                Resume & JD Matcher
-            </Typography>
-            
-         </span>
+
+            <span className='flex flex-row gap-2'>
+                <MessagesSquare color='#2196f3' />
+                <Typography color='primary' variant="h5" fontWeight={600}>
+                    Resume & JD Matcher
+                </Typography>
+
+            </span>
 
             <Button
                 onClick={refreshChat}
@@ -214,7 +267,6 @@ export default function ChatBot() {
                 {loading && <ChatBubble sender="bot" content={<CircularProgress size={20} />} />}
             </Box>
 
-            {/* Message input */}
             <TextField
                 multiline
                 minRows={2}
